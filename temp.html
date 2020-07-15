@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webcam</title>
+</head>
+<body>
+<style type="text/css">
+    #v_div {
+        display: inline-block;
+        /*z-index: 999;*/
+    }
+
+    #video {
+        position: relative;
+        background-color: black;
+        z-index: -1;
+    }
+
+    #canvas {
+        background-color: black;
+    }
+
+    #error {
+        display: none;
+    }
+
+</style>
+<div id="v_div">
+    <h1 id="error">Sorry, your browser is not supported</h1>
+    <video autoplay height="480" id="video" width="640"></video>
+</div>
+<button id="snap">Snap Photo</button>
+<canvas height="480" id="canvas" width="640"></canvas>
+<div id="result"></div>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script type="text/javascript">
+  // Grab elements, create settings, etc.
+  const video = document.getElementById('video');
+
+  async function initVideo() {
+    const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    if ('srcObject' in video) {
+      video.srcObject = mediaStream;
+    } else {
+      // Avoid using this in new browsers, as it is going away.
+      video.src = URL.createObjectURL(mediaStream);
+    }
+  }
+
+  // Get access to the camera!
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    // Not adding `{ audio: true }` since we only want video now
+    initVideo().then(e => video.play());
+
+  } else {
+    document.getElementById('error').style.display = 'block';
+  }
+
+  // Elements for taking the snapshot
+  const canvas = document.getElementById('canvas');
+  const context = canvas.getContext('2d');
+  const result = document.querySelector('#result');
+
+  // Trigger photo take
+  document.getElementById("snap").addEventListener("click", async function () {
+    context.drawImage(video, 0, 0, 640, 480);
+    const data_url = canvas.toDataURL().replace('data:image/png;base64,', '');
+    try {
+      const key = 'AIzaSyCnu6bFUjSd6YIFi_45Gz3M5kNouagKYlQ';
+      const { data } = await axios.post(`https://vision.googleapis.com/v1/images:annotate?key=${key}`, {
+        requests: [
+          {
+            image: {
+              content: data_url,
+            },
+            features: [
+              {
+                "type": "TEXT_DETECTION",
+              },
+            ],
+          },
+        ],
+      });
+      console.log(data);
+      result.textContent = JSON.stringify(data);
+    } catch (e) {
+      console.error(e);
+    }
+
+  });
+
+</script>
+</body>
+</html>
